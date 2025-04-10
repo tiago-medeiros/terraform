@@ -14,77 +14,85 @@ resource "aws_vpc" "eks_vpc" {
 # Create three subnets in different availability zones
 resource "aws_subnet" "eks_subnet_az_a" {
   vpc_id            = aws_vpc.eks_vpc.id
-  cidr_block        = "10.0.1.0/24"
-  availability_zone = data.aws_region.current.name
+  cidr_block        = "10.0.0.0/18"
+  availability_zone = "${var.region}a"
   tags              = { Name = "${var.cluster_stack}-az-a" }
 }
 
 resource "aws_subnet" "eks_subnet_az_b" {
   vpc_id            = aws_vpc.eks_vpc.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = data.aws_region.current.name_b
+  cidr_block        = "10.0.64.0/18"
+  availability_zone = "${var.region}b"
   tags              = { Name = "${var.cluster_stack}-az-b" }
 }
 
 resource "aws_subnet" "eks_subnet_az_c" {
   vpc_id            = aws_vpc.eks_vpc.id
-  cidr_block        = "10.0.3.0/24"
-  availability_zone = data.aws_region.current.name_c
+  cidr_block        = "10.0.128.0/18"
+  availability_zone = "${var.region}c"
   tags              = { Name = "${var.cluster_stack}-az-c" }
 }
 
+resource "aws_subnet" "eks_subnet_az_d" {
+  vpc_id            = aws_vpc.eks_vpc.id
+  cidr_block        = "10.0.192.0/18"
+  availability_zone = "${var.region}d"
+  tags              = { Name = "${var.cluster_stack}-az-d" }
+}
+
+
 # Other VPC with two public subnets and three private subnets
 
-resource "aws_vpc" "other_vpc" {
-  cidr_block           = "192.168.0.0/16"
+resource "aws_vpc" "app_vpc" {
+  cidr_block           = "20.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
-    Name = "Other-VPC"
+    Name = var.app_stack
   }
 }
 
 resource "aws_subnet" "public_subnet_a" {
-  vpc_id                  = aws_vpc.other_vpc.id
-  cidr_block              = "192.168.0.0/25"
-  availability_zone       = data.aws_region.current.name
+  vpc_id                  = aws_vpc.app_vpc.id
+  cidr_block              = "20.0.0.0/19"
+  availability_zone       = "${var.region}a"
   map_public_ip_on_launch = true
 
-  tags = { Name = "Other-Public-Subnet-A" }
+  tags = { Name = "${var.app_stack}-pub-a" }
 }
 
 resource "aws_subnet" "public_subnet_b" {
-  vpc_id                  = aws_vpc.other_vpc.id
-  cidr_block              = "192.168.0.128/25"
-  availability_zone       = data.aws_region.current.name_b
+  vpc_id                  = aws_vpc.app_vpc.id
+  cidr_block              = "20.0.32.0/19"
+  availability_zone       = "${var.region}b"
   map_public_ip_on_launch = true
 
-  tags = { Name = "Other-Public-Subnet-B" }
+  tags = { Name = "${var.app_stack}-pub-b" }
 }
 
 resource "aws_subnet" "private_subnet_a" {
-  vpc_id            = aws_vpc.other_vpc.id
-  cidr_block        = "192.168.1.0/24"
-  availability_zone = data.aws_region.current.name
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = "20.0.64.0/18"
+  availability_zone = "${var.region}a"
 
-  tags = { Name = "Other-Private-Subnet-A" }
+  tags = { Name = "${var.app_stack}-priv-a" }
 }
 
 resource "aws_subnet" "private_subnet_b" {
-  vpc_id            = aws_vpc.other_vpc.id
-  cidr_block        = "192.168.2.0/24"
-  availability_zone = data.aws_region.current.name_b
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = "20.0.128.0/18"
+  availability_zone = "${var.region}b"
 
-  tags = { Name = "Other-Private-Subnet-B" }
+  tags = { Name = "${var.app_stack}-priv-b" }
 }
 
 resource "aws_subnet" "private_subnet_c" {
-  vpc_id            = aws_vpc.other_vpc.id
-  cidr_block        = "192.168.3.0/24"
-  availability_zone = data.aws_region.current.name_c
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = "20.0.192.0/18"
+  availability_zone = "${var.region}c"
 
-  tags = { Name = "Other-Private-Subnet-C" }
+  tags = { Name = "${var.app_stack}-priv-c" }
 }
 
 # EKS Cluster configuration
@@ -116,31 +124,9 @@ resource "aws_eks_cluster" "main" {
   role_arn = aws_iam_role.eks_cluster_control_plane_role.arn
 
   vpc_config {
-    subnet_ids = [aws_subnet.eks_subnet_az_a, aws_subnet.eks_subnet_az_b, aws_subnet.eks_subnet_az_c]
+    subnet_ids = [aws_subnet.eks_subnet_az_a.id, aws_subnet.eks_subnet_az_b.id, aws_subnet.eks_subnet_az_c.id, aws_subnet.eks_subnet_az_d.id]
   }
 
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_control_plane_policy_attachment]
-}
-
-resource "aws_iam_role" "eks_node_group_instance_profile" {
-  name = "${var.cluster_stack}-node-group-instance-profile"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_instance_profile" "eks_nodegroup" {
-  name_prefix = "${var.cluster_stack}-node-group-"
-  role        = aws_iam_role.eks_node_group_instance_profile.name
 }
 

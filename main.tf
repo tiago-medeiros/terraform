@@ -1,7 +1,7 @@
 provider "aws" {
   access_key                  = "test"
   secret_key                  = "test"
-  region                      = "us-east-1"
+  region                      = var.region
   s3_use_path_style           = false
   skip_credentials_validation = true
   skip_metadata_api_check     = true
@@ -17,6 +17,7 @@ provider "aws" {
     es             = "http://localhost:4566"
     elasticache    = "http://localhost:4566"
     firehose       = "http://localhost:4566"
+    eks            = "http://localhost:4566"
     iam            = "http://localhost:4566"
     kinesis        = "http://localhost:4566"
     lambda         = "http://localhost:4566"

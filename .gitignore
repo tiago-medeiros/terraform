@@ -3,3 +3,5 @@
 *.tfstate.*
 !.terraform/
 !default-ua-
+.terraform.lock.hcl
+.terraform/

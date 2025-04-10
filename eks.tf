@@ -7,7 +7,7 @@ resource "aws_vpc" "eks_vpc" {
   enable_dns_hostnames = false
 
   tags = {
-    Name = var.cluster_name
+    Name = var.cluster_stack
   }
 }
 
@@ -16,21 +16,21 @@ resource "aws_subnet" "eks_subnet_az_a" {
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.1.0/24"
   availability_zone = data.aws_region.current.name
-  tags              = { Name = "${var.cluster_name}-az-a" }
+  tags              = { Name = "${var.cluster_stack}-az-a" }
 }
 
 resource "aws_subnet" "eks_subnet_az_b" {
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.2.0/24"
   availability_zone = data.aws_region.current.name_b
-  tags              = { Name = "${var.cluster_name}-az-b" }
+  tags              = { Name = "${var.cluster_stack}-az-b" }
 }
 
 resource "aws_subnet" "eks_subnet_az_c" {
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.3.0/24"
   availability_zone = data.aws_region.current.name_c
-  tags              = { Name = "${var.cluster_name}-az-c" }
+  tags              = { Name = "${var.cluster_stack}-az-c" }
 }
 
 # Other VPC with two public subnets and three private subnets
@@ -90,7 +90,7 @@ resource "aws_subnet" "private_subnet_c" {
 # EKS Cluster configuration
 
 resource "aws_iam_role" "eks_cluster_control_plane_role" {
-  name = "${var.cluster_name}-control-plane"
+  name = "${var.cluster_stack}-control-plane"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -112,18 +112,18 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_control_plane_policy_atta
 }
 
 resource "aws_eks_cluster" "main" {
-  name     = var.cluster_name
+  name     = var.cluster_stack
   role_arn = aws_iam_role.eks_cluster_control_plane_role.arn
 
   vpc_config {
-    subnet_ids = var.subnet_ids
+    subnet_ids = [aws_subnet.eks_subnet_az_a, aws_subnet.eks_subnet_az_b, aws_subnet.eks_subnet_az_c]
   }
 
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_control_plane_policy_attachment]
 }
 
 resource "aws_iam_role" "eks_node_group_instance_profile" {
-  name = "${var.cluster_name}-node-group-instance-profile"
+  name = "${var.cluster_stack}-node-group-instance-profile"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -140,7 +140,7 @@ resource "aws_iam_role" "eks_node_group_instance_profile" {
 }
 
 resource "aws_iam_instance_profile" "eks_nodegroup" {
-  name_prefix = "${var.cluster_name}-node-group-"
+  name_prefix = "${var.cluster_stack}-node-group-"
   role        = aws_iam_role.eks_node_group_instance_profile.name
 }
 
